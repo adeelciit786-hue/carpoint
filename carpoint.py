@@ -3,7 +3,12 @@ CarPoint - A simple car inventory management system
 """
 import json
 import os
+import logging
 from typing import List, Optional, Dict
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class Car:
@@ -47,6 +52,8 @@ class Car:
 class CarPoint:
     """Manages a car inventory system"""
     
+    VALID_STATUSES = {"available", "sold", "reserved", "maintenance"}
+    
     def __init__(self, data_file: str = "carpoint_data.json"):
         self.data_file = data_file
         self.cars: Dict[str, Car] = {}
@@ -79,9 +86,15 @@ class CarPoint:
         return list(self.cars.values())
     
     def update_car_status(self, car_id: str, status: str) -> bool:
-        """Update the status of a car"""
+        """
+        Update the status of a car
+        
+        Valid statuses: available, sold, reserved, maintenance
+        """
         if car_id not in self.cars:
             return False
+        if status not in self.VALID_STATUSES:
+            logger.warning(f"Status '{status}' is not in valid statuses: {self.VALID_STATUSES}")
         self.cars[car_id].status = status
         self.save_data()
         return True
@@ -116,8 +129,9 @@ class CarPoint:
                 data = json.load(f)
                 self.cars = {car_id: Car.from_dict(car_data) 
                            for car_id, car_data in data.items()}
-        except (json.JSONDecodeError, KeyError):
+        except (json.JSONDecodeError, KeyError) as e:
             # If file is corrupted, start fresh
+            logger.warning(f"Data file '{self.data_file}' is corrupted ({e}). Starting with empty inventory.")
             self.cars = {}
 
 
